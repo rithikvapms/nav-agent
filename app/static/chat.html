@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>APMS Dashboard</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        color: #172033;
+        background: #eef2f8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        max-width: 1120px;
+        min-height: 680px;
+        margin: 28px auto;
+        padding: 0 18px;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        min-height: 680px;
+        background: #fff;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 12px 35px #18294a18;
+      }
+
+      aside {
+        padding: 22px;
+        color: #fff;
+        background: #172554;
+      }
+
+      aside h1 {
+        margin: 0 0 24px;
+        font-size: 18px;
+      }
+
+      .nav-button {
+        width: 100%;
+        padding: 10px;
+        margin: 0 0 8px;
+        color: #cbd5e1;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .nav-button:hover,
+      .nav-button.active {
+        color: #fff;
+        background: #334a83;
+      }
+
+      .sidebar-context {
+        margin-top: 28px;
+        padding-top: 14px;
+        border-top: 1px solid #405487;
+      }
+
+      label {
+        display: block;
+        margin-top: 16px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      aside label {
+        color: #cbd5e1;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+        border-radius: 7px;
+      }
+
+      aside input,
+      aside select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        color: #172033;
+        background: #fff;
+        border: 1px solid #64748b;
+      }
+
+      #clear {
+        width: 100%;
+        padding: 9px;
+        margin-top: 22px;
+        color: #fff;
+        background: transparent;
+        border: 1px solid #94a3b8;
+        cursor: pointer;
+      }
+
+      .view {
+        display: none;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .view.active {
+        display: flex;
+      }
+
+      header {
+        padding: 18px 22px;
+        font-weight: 700;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      #messages {
+        flex: 1;
+        min-height: 500px;
+        padding: 22px;
+        overflow-y: auto;
+        background: #f8fafc;
+      }
+
+      .message {
+        width: fit-content;
+        max-width: 78%;
+        padding: 11px 14px;
+        margin: 0 0 14px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        border-radius: 12px;
+      }
+
+      .user {
+        margin-left: auto;
+        color: #fff;
+        background: #2563eb;
+        border-bottom-right-radius: 3px;
+      }
+
+      .assistant {
+        background: #e2e8f0;
+        border-bottom-left-radius: 3px;
+      }
+
+      #composer {
+        display: flex;
+        gap: 10px;
+        padding: 16px;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      #message {
+        flex: 1;
+        padding: 10px;
+        resize: none;
+        border: 1px solid #cbd5e1;
+      }
+
+      #send,
+      #submit {
+        padding: 10px 18px;
+        color: #fff;
+        cursor: pointer;
+        background: #2563eb;
+        border: 0;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      #knowledge-view {
+        padding: 0 32px 32px;
+        overflow-y: auto;
+      }
+
+      #knowledge-view header {
+        margin: 0 -32px 8px;
+      }
+
+      #knowledge-view p {
+        color: #475569;
+      }
+
+      #upload-form {
+        max-width: 640px;
+      }
+
+      #upload-form input,
+      #upload-form textarea {
+        width: 100%;
+        padding: 10px;
+        margin-top: 6px;
+        border: 1px solid #cbd5e1;
+      }
+
+      #submit {
+        width: 100%;
+        margin-top: 22px;
+        font-weight: 600;
+      }
+
+      #result {
+        padding: 12px;
+        margin-top: 20px;
+        white-space: pre-wrap;
+        background: #eff6ff;
+        border-radius: 6px;
+      }
+
+      #sources {
+        max-width: 720px;
+        padding: 0;
+        list-style: none;
+      }
+
+      #sources li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      small {
+        color: #64748b;
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 700px) {
+        main {
+          margin: 0;
+          padding: 0;
+        }
+
+        .app {
+          grid-template-columns: 1fr;
+          border-radius: 0;
+        }
+
+        aside {
+          padding: 16px;
+        }
+
+        .sidebar-context {
+          margin-top: 12px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <div class="app">
+        <aside>
+          <h1>APMS Dashboard</h1>
+          <button class="nav-button active" data-view="chat-view">
+            Navigation Assistant</button
+          ><button class="nav-button" data-view="knowledge-view">
+            Knowledge Management
+          </button>
+          <div class="sidebar-context" id="chat-settings">
+            <small id="conversation">New conversation</small
+            ><label
+              >Current screen
+              <input id="current-screen" placeholder="e.g. dashboard" /></label
+            ><label
+              >Knowledge source
+              <select id="source">
+                <option value="">All sources</option>
+              </select></label
+            ><button id="clear" type="button">Clear chat</button>
+          </div>
+        </aside>
+        <section id="chat-view" class="view active">
+          <header>Navigation Assistant</header>
+          <div id="messages">
+            <div class="message assistant">
+              Hi! Ask me where to find anything in APMS.
+            </div>
+          </div>
+          <form id="composer">
+            <button id="mic" type="button" class="mic-button">🎤</button>
+
+            <div id="voice-status">Tap the microphone and speak...</div>
+          </form>
+        </section>
+        <section id="knowledge-view" class="view">
+          <header>Knowledge Management</header>
+          <p>
+            Upload an APMS JSON file. The API creates a source record, chunks
+            it, and stores embeddings.
+          </p>
+          <form id="upload-form">
+            <label
+              >JSON file
+              <input
+                name="file"
+                type="file"
+                accept=".json,application/json"
+                required /></label
+            ><label
+              >Version
+              <input
+                name="version"
+                placeholder="v2"
+                required
+                maxlength="20" /></label
+            ><label
+              >Description
+              <textarea
+                name="description"
+                rows="3"
+                placeholder="Optional source description"
+              ></textarea></label
+            ><label
+              >Uploaded by (UUID, optional)
+              <input
+                name="uploaded_by"
+                placeholder="Optional user UUID" /></label
+            ><button id="submit" type="submit">Upload and ingest</button>
+          </form>
+          <div id="result" hidden></div>
+          <h2>Uploaded sources</h2>
+          <ul id="sources">
+            <li>Loading...</li>
+          </ul>
+        </section>
+      </div>
+    </main>
+    <script>
+      const chatApi = "/v1/agent/chat";
+      const sourceApi = "/v1/knowledge-sources";
+      const storageKey = "apms-conversation-id";
+
+      let conversationId = localStorage.getItem(storageKey) || "";
+
+      const messages = document.querySelector("#messages");
+      const sourceSelect = document.querySelector("#source");
+      const sourceList = document.querySelector("#sources");
+
+      const micButton = document.querySelector("#mic");
+      const voiceStatus = document.querySelector("#voice-status");
+
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let stream = null;
+      let isRecording = false;
+
+      function updateConversation() {
+        document.querySelector("#conversation").textContent = conversationId
+          ? `Conversation: ${conversationId}`
+          : "New conversation";
+      }
+
+      function addMessage(content, role) {
+        const node = document.createElement("div");
+
+        node.className = `message ${role}`;
+
+        node.textContent = content;
+
+        messages.append(node);
+
+        messages.scrollTop = messages.scrollHeight;
+
+        return node;
+      }
+
+      function renderSources(sources) {
+        sourceSelect.innerHTML = '<option value="">All sources</option>';
+
+        sources
+          .filter((s) => s.status === "READY")
+          .forEach((s) => {
+            const option = document.createElement("option");
+
+            option.value = s.id;
+
+            option.textContent = `${s.version} - ${s.file_name}`;
+
+            sourceSelect.append(option);
+          });
+
+        sourceList.innerHTML = sources.length
+          ? sources
+              .map(
+                (s) =>
+                  `<li>
+                <strong>${s.version}</strong> - ${s.file_name}
+                <br>
+                <small>
+                    ${s.status};
+                    ${s.total_screens} screens,
+                    ${s.total_chunks} chunks
+                    <br>
+                    ${s.id}
+                </small>
+            </li>`,
+              )
+              .join("")
+          : "<li>No uploaded sources yet.</li>";
+      }
+
+      async function loadSources() {
+        try {
+          const response = await fetch(sourceApi);
+
+          const sources = await response.json();
+
+          if (!response.ok)
+            throw new Error(sources.detail || "Could not load sources.");
+
+          renderSources(sources);
+        } catch (error) {
+          sourceList.innerHTML = `<li>${error.message}</li>`;
+        }
+      }
+
+      document.querySelectorAll(".nav-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          document
+            .querySelectorAll(".nav-button")
+            .forEach((item) =>
+              item.classList.toggle("active", item === button),
+            );
+
+          document
+            .querySelectorAll(".view")
+            .forEach((view) =>
+              view.classList.toggle("active", view.id === button.dataset.view),
+            );
+
+          document.querySelector("#chat-settings").hidden =
+            button.dataset.view !== "chat-view";
+
+          if (button.dataset.view === "knowledge-view") loadSources();
+        });
+      });
+
+      micButton.addEventListener("click", async () => {
+        if (!isRecording) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+
+            audioChunks = [];
+
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0) audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+              voiceStatus.textContent = "Processing...";
+
+              const audioBlob = new Blob(audioChunks, {
+                type: "audio/webm",
+              });
+
+              const formData = new FormData();
+
+              formData.append("audio", audioBlob, "voice.webm");
+
+              formData.append("conversation_id", conversationId);
+
+              formData.append(
+                "current_screen",
+                document.querySelector("#current-screen").value,
+              );
+
+              formData.append("knowledge_source_id", sourceSelect.value);
+
+              const waiting = addMessage("Thinking...", "assistant");
+
+              try {
+                const response = await fetch(chatApi, {
+                  method: "POST",
+                  body: formData,
+                });
+
+                const data = await response.json();
+
+                if (!response.ok)
+                  throw new Error(data.detail || "Request failed.");
+
+                conversationId = data.conversation_id;
+
+                localStorage.setItem(storageKey, conversationId);
+
+                updateConversation();
+
+                waiting.textContent =
+                  typeof data.answer === "object"
+                    ? JSON.stringify(data.answer, null, 2)
+                    : data.answer;
+              } catch (error) {
+                waiting.textContent = `Error: ${error.message}`;
+              } finally {
+                voiceStatus.textContent = "Tap microphone to speak";
+
+                stream.getTracks().forEach((track) => track.stop());
+              }
+            };
+
+            mediaRecorder.start();
+
+            isRecording = true;
+
+            micButton.textContent = "⏹ Stop Recording";
+
+            voiceStatus.textContent = "Listening...";
+          } catch {
+            alert("Unable to access microphone.");
+          }
+        } else {
+          mediaRecorder.stop();
+
+          isRecording = false;
+
+          micButton.textContent = "🎤 Start Recording";
+
+          voiceStatus.textContent = "Uploading...";
+        }
+      });
+
+      document.querySelector("#clear").addEventListener("click", async () => {
+        if (!conversationId) {
+          messages.innerHTML = "";
+
+          addMessage("Hi! Ask me where to find anything in APMS.", "assistant");
+
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${chatApi}/clear?conversation_id=${encodeURIComponent(conversationId)}`,
+            {
+              method: "POST",
+            },
+          );
+
+          const data = await response.json();
+
+          if (!response.ok)
+            throw new Error(data.detail || "Could not clear chat.");
+
+          conversationId = "";
+
+          localStorage.removeItem(storageKey);
+
+          updateConversation();
+
+          messages.innerHTML = "";
+
+          addMessage("Chat cleared. How can I help?", "assistant");
+        } catch (error) {
+          addMessage(`Error: ${error.message}`, "assistant");
+        }
+      });
+
+      const uploadForm = document.querySelector("#upload-form");
+
+      const result = document.querySelector("#result");
+
+      const uploadButton = document.querySelector("#submit");
+
+      function showUploadResult(message, error = false) {
+        result.hidden = false;
+
+        result.textContent = message;
+
+        result.style.background = error ? "#fef2f2" : "#eff6ff";
+      }
+
+      uploadForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        uploadButton.disabled = true;
+
+        showUploadResult("Uploading and creating embeddings...");
+
+        try {
+          const response = await fetch(`${sourceApi}/upload`, {
+            method: "POST",
+            body: new FormData(uploadForm),
+          });
+
+          const source = await response.json();
+
+          if (!response.ok) throw new Error(source.detail || "Upload failed.");
+
+          showUploadResult(
+            `Ready: ${source.file_name}
+Source ID: ${source.id}
+${source.total_screens} screens,
+${source.total_chunks} chunks`,
+          );
+
+          uploadForm.reset();
+
+          loadSources();
+        } catch (error) {
+          showUploadResult(error.message, true);
+        } finally {
+          uploadButton.disabled = false;
+        }
+      });
+
+      updateConversation();
+      loadSources();
+    </script>
+  </body>
+</html>

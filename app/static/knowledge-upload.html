@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Knowledge Source Upload</title>
+    <style>
+      body {
+        font:
+          16px system-ui,
+          sans-serif;
+        background: #f5f7fb;
+        color: #1f2937;
+        margin: 0;
+      }
+      main {
+        max-width: 720px;
+        margin: 48px auto;
+        background: #fff;
+        padding: 32px;
+        border-radius: 12px;
+        box-shadow: 0 8px 28px #1f29371a;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-top: 16px;
+      }
+      input,
+      textarea,
+      button {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 10px;
+        margin-top: 6px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font: inherit;
+      }
+      button {
+        background: #2563eb;
+        border: 0;
+        color: #fff;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 22px;
+      }
+      button:disabled {
+        opacity: 0.65;
+        cursor: wait;
+      }
+      #result {
+        white-space: pre-wrap;
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 20px;
+        background: #eff6ff;
+      }
+      li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      small {
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Knowledge source upload</h1>
+      <p>
+        Upload an APMS JSON file. The API creates a source record, chunks it,
+        and stores embeddings.
+      </p>
+      <form id="upload-form">
+        <label
+          >JSON file
+          <input
+            name="file"
+            type="file"
+            accept=".json,application/json"
+            required
+        /></label>
+        <label
+          >Version
+          <input name="version" placeholder="v2" required maxlength="20"
+        /></label>
+        <label
+          >Description
+          <textarea
+            name="description"
+            rows="3"
+            placeholder="Optional source description"
+          ></textarea>
+        </label>
+        <label
+          >Uploaded by (UUID, optional)
+          <input name="uploaded_by" placeholder="Optional user UUID"
+        /></label>
+        <button id="submit" type="submit">Upload and ingest</button>
+      </form>
+      <div id="result" hidden></div>
+      <h2>Uploaded sources</h2>
+      <ul id="sources">
+        <li>Loading…</li>
+      </ul>
+    </main>
+    <script>
+      const api = "/v1/knowledge-sources";
+      const result = document.querySelector("#result");
+      const form = document.querySelector("#upload-form");
+      const button = document.querySelector("#submit");
+      function show(message, error = false) {
+        result.hidden = false;
+        result.textContent = message;
+        result.style.background = error ? "#fef2f2" : "#eff6ff";
+      }
+      async function loadSources() {
+        const list = document.querySelector("#sources");
+        try {
+          const response = await fetch(api);
+          const sources = await response.json();
+          if (!response.ok)
+            throw new Error(sources.detail || "Could not load sources.");
+          list.innerHTML = sources.length
+            ? sources
+                .map(
+                  (s) =>
+                    `<li><strong>${s.version}</strong> - ${s.file_name}<br><small>${s.status}; ${s.total_screens} screens, ${s.total_chunks} chunks<br>${s.id}</small></li>`,
+                )
+                .join("")
+            : "<li>No uploaded sources yet.</li>";
+        } catch (error) {
+          list.innerHTML = `<li>${error.message}</li>`;
+        }
+      }
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        button.disabled = true;
+        show("Uploading and creating embeddings…");
+        try {
+          const response = await fetch(`${api}/upload`, {
+            method: "POST",
+            body: new FormData(form),
+          });
+          const source = await response.json();
+          if (!response.ok) throw new Error(source.detail || "Upload failed.");
+          show(
+            `Ready: ${source.file_name}\nSource ID: ${source.id}\n${source.total_screens} screens, ${source.total_chunks} chunks`,
+          );
+          form.reset();
+          loadSources();
+        } catch (error) {
+          show(error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      loadSources();
+    </script>
+  </body>
+</html>
