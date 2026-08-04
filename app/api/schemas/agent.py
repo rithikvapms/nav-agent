@@ -29,3 +29,20 @@ class ChatResponse(BaseModel):
     intent: str
     token_usage: int
     sources: list[Source] = []
+
+
+class SpeechRetryResponse(BaseModel):
+    status: str = "retry"
+    reason: str
+    message: str
+
+
+class UnifiedVoiceResponse(BaseModel):
+    status: str
+    intent: str
+    speech: str
+    navigation: dict | None = None
+    audio: str | None = None
+    conversation_id: str | None = None
+    token_usage: int = 0
+    sources: list[Source] = []

@@ -6,6 +6,7 @@ from app.chunking.chunking import ScreenChunker
 from app.embeddings.embedder import Embedder
 from app.models.screen_chunk import ScreenChunk
 from app.repositories.screen_repository import ScreenRepository
+from app.services.graph_builder_service import GraphBuilderService
 
 
 class IngestionService:
@@ -54,5 +55,8 @@ class IngestionService:
                 db_chunks.append(db_chunk)
 
         self.repository.save_all(db_chunks)
+
+        if knowledge_source_id is not None:
+            GraphBuilderService(self.repository.db).build(data, knowledge_source_id)
 
         return len(db_chunks)

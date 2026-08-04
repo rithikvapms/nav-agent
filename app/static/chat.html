@@ -358,7 +358,16 @@
       let mediaRecorder = null;
       let audioChunks = [];
       let stream = null;
+      let audioContext = null;
+      let analyser = null;
+      let sourceNode = null;
+      let silenceTimer = null;
+      let animationFrame = null;
+
       let isRecording = false;
+
+      const SILENCE_DELAY = 1000;
+      const SILENCE_THRESHOLD = 18;
 
       function updateConversation() {
         document.querySelector("#conversation").textContent = conversationId
@@ -378,6 +387,18 @@
         messages.scrollTop = messages.scrollHeight;
 
         return node;
+      }
+
+      function playVoice(encodedAudio) {
+        if (!encodedAudio) return;
+        const binary = atob(encodedAudio);
+        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
+        const player = new Audio(url);
+        player.onended = () => URL.revokeObjectURL(url);
+        player.play().catch(() => {
+          voiceStatus.textContent = "Response ready. Click the browser audio permission to play it.";
+        });
       }
 
       function renderSources(sources) {
@@ -499,16 +520,14 @@
                 if (!response.ok)
                   throw new Error(data.detail || "Request failed.");
 
-                conversationId = data.conversation_id;
-
-                localStorage.setItem(storageKey, conversationId);
-
+                conversationId = data.conversation_id || conversationId;
+                if (conversationId) localStorage.setItem(storageKey, conversationId);
                 updateConversation();
-
-                waiting.textContent =
-                  typeof data.answer === "object"
-                    ? JSON.stringify(data.answer, null, 2)
-                    : data.answer;
+                waiting.textContent = data.navigation
+                  ? JSON.stringify(data.navigation, null, 2)
+                  : data.speech;
+                waiting.classList.toggle("retry-message", data.intent === "repeat");
+                playVoice(data.audio);
               } catch (error) {
                 waiting.textContent = `Error: ${error.message}`;
               } finally {

@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     api_keys: str = ""
     rate_limit_per_minute: int = 60
     max_history_messages: int = 8
+    kokoro_model_path: str = "models/kokoro-v1.0.onnx"
+    kokoro_voices_path: str = "models/voices-v1.0.bin"
+    kokoro_voice: str = "af_sarah"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

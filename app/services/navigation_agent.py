@@ -8,6 +8,7 @@ from app.repositories.screen_repository import ScreenRepository
 from app.retriever.retriever import Retriever
 from app.services.llm_service import LLMService
 from app.services.query_understanding import QueryUnderstanding
+from app.services.navigation_graph_service import NavigationGraphService
 from app.services.security_guard import SecurityGuard
 from app.services.identity_guard import IdentityGuard
 from app.core.logger import logger
@@ -32,6 +33,7 @@ class APMSNavigationAgent:
             repository.get_vocabulary_chunks(knowledge_source_id)
         )
         self.knowledge_source_id = knowledge_source_id
+        self.graph = NavigationGraphService(db)
 
     def answer(
         self, question: str, history: list | None = None, current_screen: str | None = None
@@ -70,6 +72,15 @@ class APMSNavigationAgent:
         retrieval_query = self.understanding.retrieval_query(
             normalized_question, intent
         )
+        graph_path = (
+            self.graph.find_path(
+                self.knowledge_source_id,
+                current_screen,
+                normalized_question,
+            )
+            if self.knowledge_source_id is not None
+            else []
+        )
         retrieved_chunks = self.retriever.retrieve(
             retrieval_query, knowledge_source_id=self.knowledge_source_id
         )
@@ -80,7 +91,7 @@ class APMSNavigationAgent:
         )
         
         prompt = build_rag_user_prompt(
-            normalized_question, retrieved_chunks, intent, history
+            normalized_question, retrieved_chunks, intent, history, graph_path
         )
         sources, seen = [], set()
         for item in retrieved_chunks:

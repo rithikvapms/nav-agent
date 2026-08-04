@@ -6,6 +6,7 @@ def build_rag_user_prompt(
     retrieved_chunks: list,
     intent: str,
     history: list | None = None,
+    navigation_path: list | None = None,
 ) -> str:
     """Build the untrusted context payload supplied after the system prompt."""
     context = []
@@ -23,6 +24,10 @@ Content:
         )
 
     context_text = "\n\n".join(context) or "No APMS reference was retrieved."
+    graph_text = "\n".join(
+        f"{index}. {node.get('title') or node.get('id')} ({node.get('route') or 'no route'})"
+        for index, node in enumerate(navigation_path or [], start=1)
+    ) or "No graph path was found."
     history_text = "\n".join(
         f"{item['role'].upper()}: {item['content']}"
         for item in (history or [])[-6:]
@@ -34,6 +39,9 @@ CURRENT INTENT: {intent}
 
 APMS REFERENCE MATERIAL:
 {context_text}
+
+GRAPH NAVIGATION PATH (computed with BFS; treat as authoritative routing context):
+{graph_text}
 
 RECENT CONVERSATION:
 {history_text}

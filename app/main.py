@@ -8,6 +8,7 @@ from pathlib import Path
 from app.api.routes import agent, health, knowledge_sources
 from app.core.config import get_settings
 from app.database.db import init_database
+from app.services.tts_service import TTSService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -15,6 +16,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_database()
+    settings = get_settings()
+    tts = TTSService(settings.kokoro_model_path, settings.kokoro_voices_path, settings.kokoro_voice)
+    agent.set_tts_service(tts)
     yield
 
 

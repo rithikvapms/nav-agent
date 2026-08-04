@@ -23,6 +23,8 @@ def init_database() -> None:
     """Create application-owned tables when they do not already exist."""
     import app.models.chat_message  # noqa: F401
     import app.models.knowledge_source  # noqa: F401
+    import app.models.navigation_edge  # noqa: F401
+    import app.models.navigation_node  # noqa: F401
     import app.models.screen_chunk  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
