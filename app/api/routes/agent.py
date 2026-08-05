@@ -1,5 +1,6 @@
 import base64
 import json
+from threading import Event, Lock
 from uuid import UUID, uuid4
 from pathlib import Path
 
@@ -21,7 +22,7 @@ from app.services.conversation_service import ConversationService
 from app.services.navigation_agent import APMSNavigationAgent
 from app.services.speech_service import SpeechService
 from app.services.audio_pipeline_service import AudioPipelineService
-from app.services.vad_service import VADService 
+from app.services.vad_service import VADService
 from app.core.logger import logger
 from app.services.tts_service import TTSService
 
@@ -38,6 +39,8 @@ audio_pipeline = AudioPipelineService(
     vad_service=vad_service,
 )
 tts_service: TTSService | None = None
+_active_requests: dict[str, Event] = {}
+_active_requests_lock = Lock()
 
 
 def set_tts_service(service: TTSService) -> None:
@@ -53,20 +56,50 @@ async def _voice_response(
     conversation_id: str | None = None,
     token_usage: int = 0,
     sources: list[dict] | None = None,
+    request_id: str | None = None,
+    cancel_event: Event | None = None,
 ) -> UnifiedVoiceResponse:
     if tts_service is None:
         raise HTTPException(status_code=503, detail="Voice synthesis is not ready.")
     try:
+        if cancel_event is not None and cancel_event.is_set():
+            raise HTTPException(status_code=499, detail="Request was cancelled.")
         wav_bytes = await run_in_threadpool(tts_service.synthesize, speech)
+        if cancel_event is not None and cancel_event.is_set():
+            raise HTTPException(status_code=499, detail="Request was cancelled.")
         audio = base64.b64encode(wav_bytes).decode("ascii")
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("Kokoro synthesis failed")
-        raise HTTPException(status_code=503, detail="Voice synthesis is temporarily unavailable.") from exc
+        raise HTTPException(
+            status_code=503, detail="Voice synthesis is temporarily unavailable."
+        ) from exc
     return UnifiedVoiceResponse(
-        status=status, intent=intent, speech=speech, navigation=navigation, audio=audio,
-        conversation_id=conversation_id, token_usage=token_usage,
+        status=status,
+        intent=intent,
+        speech=speech,
+        navigation=navigation,
+        audio=audio,
+        conversation_id=conversation_id,
+        token_usage=token_usage,
         sources=[Source(**source) for source in (sources or [])],
+        request_id=request_id,
     )
+
+
+def _request_event(request_id: str) -> Event:
+    event = Event()
+    with _active_requests_lock:
+        _active_requests[request_id] = event
+    return event
+
+
+def _ensure_active(request_id: str, event: Event) -> None:
+    if event.is_set():
+        raise HTTPException(
+            status_code=499, detail=f"Request {request_id} was cancelled."
+        )
 
 
 @router.get("/chat/ui", include_in_schema=False)
@@ -94,78 +127,123 @@ def _conversation_id(value: str | None) -> str:
     response_model=UnifiedVoiceResponse,
 )
 async def chat(
-    audio: UploadFile = File(...),
+    audio: UploadFile | None = File(None),
+    message: str | None = Form(None),
+    request_id: str | None = Form(None),
     conversation_id: str | None = Form(None),
     current_screen: str | None = Form(None),
     knowledge_source_id: UUID | None = Form(None),
     db: Session = Depends(get_db),
     _: str = Depends(authorize_request),
 ):
+    request_id = request_id or str(uuid4())
+    cancel_event = _request_event(request_id)
+    try:
+        conversation_id = _conversation_id(conversation_id)
+        if audio is not None:
+            speech_result = await audio_pipeline.process(audio)
+            _ensure_active(request_id, cancel_event)
+            if speech_result.get("status") == "retry":
+                return await _voice_response(
+                    "retry",
+                    "repeat",
+                    "Sorry, I couldn't understand you. Could you please repeat?",
+                    request_id=request_id,
+                    cancel_event=cancel_event,
+                )
+            message = speech_result["text"]
+        elif not message or not message.strip():
+            raise HTTPException(
+                status_code=422, detail="Provide either audio or message."
+            )
+        else:
+            message = message.strip()
+        _ensure_active(request_id, cancel_event)
 
-    conversation_id = _conversation_id(conversation_id)
+        conversations = ConversationService(db)
 
-    speech_result = await audio_pipeline.process(audio)
+        history = conversations.history(conversation_id)
 
-    if speech_result.get("status") == "retry":
-        return await _voice_response(
-            "retry", "repeat", "Sorry, I couldn't understand you. Could you please repeat?"
+        conversations.add(conversation_id, "user", message)
+        _ensure_active(request_id, cancel_event)
+
+        result = await run_in_threadpool(
+            APMSNavigationAgent(db, knowledge_source_id=knowledge_source_id).answer,
+            message,
+            history,
+            current_screen,
+        )
+        _ensure_active(request_id, cancel_event)
+
+        persisted_answer = (
+            json.dumps(result.answer, ensure_ascii=False)
+            if isinstance(result.answer, dict)
+            else result.answer
+        )
+        conversations.add(
+            conversation_id, "assistant", persisted_answer, result.token_usage
         )
 
-    message = speech_result["text"]
-
-    conversations = ConversationService(db)
-
-    history = conversations.history(conversation_id)
-
-    conversations.add(
-        conversation_id,
-        "user",
-        message,
-    )
-
-    result = APMSNavigationAgent(
-        db,
-        knowledge_source_id=knowledge_source_id,
-    ).answer(
-        message,
-        history,
-        current_screen=current_screen,
-    )
-
-    persisted_answer = (
-        json.dumps(result.answer, ensure_ascii=False)
-        if isinstance(result.answer, dict)
-        else result.answer
-    )
-
-    conversations.add(
-        conversation_id,
-        "assistant",
-        persisted_answer,
-        result.token_usage,
-    )
-
-    if result.intent == "navigate":
-        navigation = result.answer if isinstance(result.answer, dict) else {
-            "status": "success",
-            "intent": "navigate",
-            "screen": {"id": None, "title": None, "module": None},
-            "navigation_path": [],
-            "summary": str(result.answer),
-            "steps": [],
-            "sources": [source["screen_id"] for source in result.sources],
-        }
-        screen = navigation.get("screen") or {}
-        screen_name = screen.get("title") or screen.get("id") or "the requested screen"
-        return await _voice_response(
-            "success", "navigation", f"Opening {screen_name}.", navigation,
-            conversation_id, result.token_usage, result.sources,
+        if result.intent == "navigate":
+            navigation = (
+                result.answer
+                if isinstance(result.answer, dict)
+                else {
+                    "status": "success",
+                    "intent": "navigate",
+                    "confidence": 0.0,
+                    "screen": {"id": None, "title": None, "module": None},
+                    "navigation_path": [],
+                    "summary": str(result.answer),
+                    "steps": [],
+                    "sources": [source["screen_id"] for source in result.sources],
+                }
+            )
+            screen = navigation.get("screen") or {}
+            screen_name = (
+                screen.get("title") or screen.get("id") or "the requested screen"
+            )
+            return await _voice_response(
+                "success",
+                "navigation",
+                f"Opening {screen_name}.",
+                navigation,
+                conversation_id,
+                result.token_usage,
+                result.sources,
+                request_id,
+                cancel_event,
+            )
+        speech = (
+            result.answer
+            if isinstance(result.answer, str)
+            else json.dumps(result.answer, ensure_ascii=False)
         )
-    speech = result.answer if isinstance(result.answer, str) else json.dumps(result.answer, ensure_ascii=False)
-    return await _voice_response(
-        "success", "information", speech, conversation_id=conversation_id,
-        token_usage=result.token_usage, sources=result.sources,
-    )
+        return await _voice_response(
+            "success",
+            "information",
+            speech,
+            conversation_id=conversation_id,
+            token_usage=result.token_usage,
+            sources=result.sources,
+            request_id=request_id,
+            cancel_event=cancel_event,
+        )
+    finally:
+        with _active_requests_lock:
+            _active_requests.pop(request_id, None)
+
+
+@router.post("/cancel/{request_id}")
+def cancel_request(
+    request_id: str, _: str = Depends(authorize_request)
+) -> dict[str, str]:
+    with _active_requests_lock:
+        event = _active_requests.get(request_id)
+    if event is None:
+        return {"status": "not_found", "request_id": request_id}
+    event.set()
+    return {"status": "cancelled", "request_id": request_id}
 
 
 @router.post("/chat/clear")

@@ -293,6 +293,9 @@
             </div>
           </div>
           <form id="composer">
+            <textarea id="message" rows="1" placeholder="Ask anything about APMS..." aria-label="Message"></textarea>
+            <button id="send" type="submit">Send</button>
+            <button id="stop" type="button" hidden>Stop</button>
             <button id="mic" type="button" class="mic-button">🎤</button>
 
             <div id="voice-status">Tap the microphone and speak...</div>
@@ -353,6 +356,8 @@
       const sourceList = document.querySelector("#sources");
 
       const micButton = document.querySelector("#mic");
+      const messageInput = document.querySelector("#message");
+      const stopButton = document.querySelector("#stop");
       const voiceStatus = document.querySelector("#voice-status");
 
       let mediaRecorder = null;
@@ -365,6 +370,12 @@
       let animationFrame = null;
 
       let isRecording = false;
+      let activeController = null;
+      let activeRequestId = null;
+      let discardRecording = false;
+      let voiceRecognition = null;
+      let voiceTranscript = "";
+      let voiceMessageNode = null;
 
       const SILENCE_DELAY = 1000;
       const SILENCE_THRESHOLD = 18;
@@ -400,6 +411,64 @@
           voiceStatus.textContent = "Response ready. Click the browser audio permission to play it.";
         });
       }
+
+      function applyResponse(data, node) {
+        conversationId = data.conversation_id || conversationId;
+        if (conversationId) localStorage.setItem(storageKey, conversationId);
+        updateConversation();
+        node.textContent = data.navigation ? JSON.stringify(data.navigation, null, 2) : data.speech;
+        node.classList.toggle("retry-message", data.intent === "repeat");
+        playVoice(data.audio);
+      }
+
+      async function sendText() {
+        const text = messageInput.value.trim();
+        if (!text || activeController) return;
+        messageInput.value = "";
+        addMessage(text, "user");
+        const node = addMessage("Thinking...", "assistant");
+        activeController = new AbortController();
+        activeRequestId = crypto.randomUUID();
+        stopButton.hidden = false;
+        const form = new FormData();
+        form.append("message", text);
+        form.append("request_id", activeRequestId);
+        form.append("conversation_id", conversationId);
+        form.append("current_screen", document.querySelector("#current-screen").value);
+        form.append("knowledge_source_id", sourceSelect.value);
+        try {
+          const response = await fetch(chatApi, { method: "POST", body: form, signal: activeController.signal });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "Request failed.");
+          applyResponse(data, node);
+        } catch (error) {
+          node.textContent = error.name === "AbortError" ? "Request stopped." : `Error: ${error.message}`;
+        } finally {
+          activeController = null; activeRequestId = null; stopButton.hidden = true;
+        }
+      }
+
+      document.querySelector("#composer").addEventListener("submit", (event) => {
+        event.preventDefault();
+        sendText();
+      });
+      messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendText();
+        }
+      });
+      stopButton.addEventListener("click", () => {
+        if (isRecording && mediaRecorder) {
+          discardRecording = true;
+          mediaRecorder.stop();
+          isRecording = false;
+          micButton.textContent = "ðŸŽ¤ Start Recording";
+        }
+        if (activeController) activeController.abort();
+        if (activeRequestId) fetch(`/v1/agent/cancel/${encodeURIComponent(activeRequestId)}`, { method: "POST", keepalive: true }).catch(() => {});
+        stopButton.hidden = true;
+      });
 
       function renderSources(sources) {
         sourceSelect.innerHTML = '<option value="">All sources</option>';
@@ -482,12 +551,29 @@
             audioChunks = [];
 
             mediaRecorder = new MediaRecorder(stream);
+            voiceTranscript = "";
+            voiceMessageNode = addMessage("🎤 Listening…", "user");
+            const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (Recognition) {
+              voiceRecognition = new Recognition();
+              voiceRecognition.continuous = true;
+              voiceRecognition.interimResults = true;
+              voiceRecognition.lang = "en-US";
+              voiceRecognition.onresult = (event) => {
+                voiceTranscript = Array.from(event.results).map((result) => result[0].transcript).join(" ").trim();
+                if (voiceMessageNode) voiceMessageNode.textContent = voiceTranscript || "🎤 Listening…";
+              };
+              try { voiceRecognition.start(); } catch (_) { voiceRecognition = null; }
+            }
 
             mediaRecorder.ondataavailable = (event) => {
               if (event.data.size > 0) audioChunks.push(event.data);
             };
 
             mediaRecorder.onstop = async () => {
+              if (voiceRecognition) { try { voiceRecognition.stop(); } catch (_) {} voiceRecognition = null; }
+              if (discardRecording) { discardRecording = false; stream.getTracks().forEach((track) => track.stop()); return; }
+              if (voiceMessageNode) voiceMessageNode.textContent = voiceTranscript || "🎤 Voice message";
               voiceStatus.textContent = "Processing...";
 
               const audioBlob = new Blob(audioChunks, {
@@ -497,6 +583,10 @@
               const formData = new FormData();
 
               formData.append("audio", audioBlob, "voice.webm");
+              activeRequestId = crypto.randomUUID();
+              activeController = new AbortController();
+              stopButton.hidden = false;
+              formData.append("request_id", activeRequestId);
 
               formData.append("conversation_id", conversationId);
 
@@ -513,6 +603,7 @@
                 const response = await fetch(chatApi, {
                   method: "POST",
                   body: formData,
+                  signal: activeController.signal,
                 });
 
                 const data = await response.json();
@@ -531,6 +622,9 @@
               } catch (error) {
                 waiting.textContent = `Error: ${error.message}`;
               } finally {
+                activeController = null;
+                activeRequestId = null;
+                stopButton.hidden = true;
                 voiceStatus.textContent = "Tap microphone to speak";
 
                 stream.getTracks().forEach((track) => track.stop());

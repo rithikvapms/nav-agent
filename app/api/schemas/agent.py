@@ -46,3 +46,4 @@ class UnifiedVoiceResponse(BaseModel):
     conversation_id: str | None = None
     token_usage: int = 0
     sources: list[Source] = []
+    request_id: str | None = None
