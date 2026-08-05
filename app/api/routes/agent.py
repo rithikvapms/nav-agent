@@ -149,7 +149,6 @@ async def chat(
         navigation = result.answer if isinstance(result.answer, dict) else {
             "status": "success",
             "intent": "navigate",
-            "confidence": 0.0,
             "screen": {"id": None, "title": None, "module": None},
             "navigation_path": [],
             "summary": str(result.answer),

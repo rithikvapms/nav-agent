@@ -80,8 +80,9 @@ class IdentityGuard:
                 re.IGNORECASE,
             ),
             (
-                "My responses are focused on the APMS knowledge base and the "
-                "capabilities provided within this application."
+                "I'm the APMS AI Navigation Assistant. I help users navigate "
+                "the APMS platform by providing accurate navigation guidance "
+                "and answering platform-related questions."
             ),
         ),
     ]

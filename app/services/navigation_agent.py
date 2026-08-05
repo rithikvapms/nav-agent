@@ -121,7 +121,6 @@ class APMSNavigationAgent:
                 {
                     "status": "success",
                     "intent": "navigate",
-                    "confidence": 0.0,
                     "screen": {"id": None, "title": None, "module": None},
                     "navigation_path": [],
                     "summary": safe_answer,
