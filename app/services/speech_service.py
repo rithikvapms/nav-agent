@@ -47,10 +47,15 @@ class SpeechService:
         try:
 
             segments, info = self.model.transcribe(
-                temp_path, language="en", beam_size=5, vad_filter=True
+                # The audio pipeline already runs Silero VAD on this exact WAV.
+                # A second VAD pass can remove short, valid one-word commands.
+                temp_path, language="en", beam_size=5, vad_filter=False
             )
 
-            transcript = "".join(segment.text for segment in segments).strip()
+            segment_list = list(segments)
+            transcript = "".join(segment.text for segment in segment_list).strip()
+            avg_logprob = (sum(float(getattr(segment, "avg_logprob", 0.0)) for segment in segment_list) / len(segment_list)) if segment_list else None
+            no_speech = max((float(getattr(segment, "no_speech_prob", 0.0)) for segment in segment_list), default=0.0)
 
             processing_time = round(time.perf_counter() - start, 3)
 
@@ -61,12 +66,17 @@ class SpeechService:
                 info.duration,
                 processing_time,
             )
+            logger.info("Whisper diagnostics | model=%s | language_probability=%.3f | segments=%d | avg_logprob=%s | max_no_speech_prob=%.3f | transcript=%r", os.getenv("WHISPER_MODEL", "base"), float(getattr(info, "language_probability", 0.0)), len(segment_list), avg_logprob, no_speech, transcript)
+            if avg_logprob is not None and avg_logprob < -1.0:
+                logger.warning("Low Whisper confidence | avg_logprob=%.3f | transcript=%r", avg_logprob, transcript)
 
             return {
                 "text": transcript,
                 "language": info.language,
                 "duration": round(info.duration, 2),
                 "processing_time": processing_time,
+                "avg_logprob": avg_logprob,
+                "no_speech_probability": no_speech,
             }
 
         except Exception as e:

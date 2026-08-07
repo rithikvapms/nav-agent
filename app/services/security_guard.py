@@ -12,6 +12,7 @@ class GuardResult:
     allowed: bool
     text: str
     message: str | None = None
+    category: str = "normal"
 
 
 class SecurityGuard:
@@ -28,6 +29,19 @@ class SecurityGuard:
         r"\b(ignore|disregard|override|reveal|show)\b.{0,80}\b"
         r"(previous|above|system|developer|hidden)\b.{0,80}\b"
         r"(instruction|prompt|message|rule)\b",
+        re.IGNORECASE,
+    )
+    _internal_information = re.compile(
+        r"\b("
+        r"database|db|schema|table|tables|"
+        r"knowledge\s*base|vector\s*database|vector\s*store|"
+        r"retrieval|rag|embedding|embeddings|"
+        r"prompt|system\s*prompt|developer\s*prompt|"
+        r"architecture|backend|implementation|"
+        r"model|models|llm|api|apis|"
+        r"source\s*code|repository|repo|workflow|"
+        r"navigation\s*graph"
+        r")\b",
         re.IGNORECASE,
     )
 
@@ -47,6 +61,15 @@ class SecurityGuard:
                 False,
                 "",
                 "I can help with your question, but I can't follow requests to override or reveal protected instructions.",
+            )
+        
+        if cls._internal_information.search(cleaned):
+            logger.info("SecurityGuard: Restricted information request detected")
+            return GuardResult(
+                allowed=False,
+                text="",
+                message="I'm unable to share internal system details.",
+                category="restricted_information",
             )
 
         for pattern in cls._secret_patterns:

@@ -58,7 +58,14 @@ async def _voice_response(
     sources: list[dict] | None = None,
     request_id: str | None = None,
     cancel_event: Event | None = None,
+    generate_audio: bool = True,
 ) -> UnifiedVoiceResponse:
+    if not generate_audio:
+        return UnifiedVoiceResponse(
+            status=status, intent=intent, speech=speech, navigation=navigation,
+            audio=None, conversation_id=conversation_id, token_usage=token_usage,
+            sources=[Source(**source) for source in (sources or [])], request_id=request_id,
+        )
     if tts_service is None:
         raise HTTPException(status_code=503, detail="Voice synthesis is not ready.")
     try:
@@ -140,6 +147,7 @@ async def chat(
     cancel_event = _request_event(request_id)
     try:
         conversation_id = _conversation_id(conversation_id)
+        voice_input = audio is not None
         if audio is not None:
             speech_result = await audio_pipeline.process(audio)
             _ensure_active(request_id, cancel_event)
@@ -150,6 +158,7 @@ async def chat(
                     "Sorry, I couldn't understand you. Could you please repeat?",
                     request_id=request_id,
                     cancel_event=cancel_event,
+                    generate_audio=True,
                 )
             message = speech_result["text"]
         elif not message or not message.strip():
@@ -213,6 +222,7 @@ async def chat(
                 result.sources,
                 request_id,
                 cancel_event,
+                voice_input,
             )
         speech = (
             result.answer
@@ -228,6 +238,7 @@ async def chat(
             sources=result.sources,
             request_id=request_id,
             cancel_event=cancel_event,
+            generate_audio=voice_input,
         )
     finally:
         with _active_requests_lock:

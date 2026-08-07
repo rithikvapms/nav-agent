@@ -373,8 +373,6 @@
       let activeController = null;
       let activeRequestId = null;
       let discardRecording = false;
-      let voiceRecognition = null;
-      let voiceTranscript = "";
       let voiceMessageNode = null;
 
       const SILENCE_DELAY = 1000;
@@ -550,35 +548,23 @@
 
             audioChunks = [];
 
-            mediaRecorder = new MediaRecorder(stream);
-            voiceTranscript = "";
-            voiceMessageNode = addMessage("🎤 Listening…", "user");
-            const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (Recognition) {
-              voiceRecognition = new Recognition();
-              voiceRecognition.continuous = true;
-              voiceRecognition.interimResults = true;
-              voiceRecognition.lang = "en-US";
-              voiceRecognition.onresult = (event) => {
-                voiceTranscript = Array.from(event.results).map((result) => result[0].transcript).join(" ").trim();
-                if (voiceMessageNode) voiceMessageNode.textContent = voiceTranscript || "🎤 Listening…";
-              };
-              try { voiceRecognition.start(); } catch (_) { voiceRecognition = null; }
-            }
+            const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+              ? "audio/webm;codecs=opus" : "audio/webm";
+            mediaRecorder = new MediaRecorder(stream, {
+              mimeType,
+              audioBitsPerSecond: 128000,
+            });
+            voiceMessageNode = addMessage("🎤 Voice message", "user");
 
             mediaRecorder.ondataavailable = (event) => {
               if (event.data.size > 0) audioChunks.push(event.data);
             };
 
             mediaRecorder.onstop = async () => {
-              if (voiceRecognition) { try { voiceRecognition.stop(); } catch (_) {} voiceRecognition = null; }
               if (discardRecording) { discardRecording = false; stream.getTracks().forEach((track) => track.stop()); return; }
-              if (voiceMessageNode) voiceMessageNode.textContent = voiceTranscript || "🎤 Voice message";
               voiceStatus.textContent = "Processing...";
 
-              const audioBlob = new Blob(audioChunks, {
-                type: "audio/webm",
-              });
+              const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
 
               const formData = new FormData();
 
