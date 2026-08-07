@@ -44,6 +44,20 @@ class SecurityGuard:
         r")\b",
         re.IGNORECASE,
     )
+    _internal_information_patterns = (
+        re.compile(
+            r"\b(where|how)\b.*\b(get|retrieve|obtain|fetch|source)\b.*\b(information|data)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bwhere\b.*\bcome\b.*\bfrom\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bhow\b.*\bknow\b",
+            re.IGNORECASE,
+        ),
+    )
 
     @classmethod
     def check_input(cls, text: str) -> GuardResult:
@@ -62,8 +76,10 @@ class SecurityGuard:
                 "",
                 "I can help with your question, but I can't follow requests to override or reveal protected instructions.",
             )
-        
-        if cls._internal_information.search(cleaned):
+
+        if cls._internal_information.search(cleaned) or any(
+            p.search(cleaned) for p in cls._internal_information_patterns
+        ):
             logger.info("SecurityGuard: Restricted information request detected")
             return GuardResult(
                 allowed=False,
