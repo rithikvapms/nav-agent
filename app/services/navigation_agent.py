@@ -11,6 +11,7 @@ from app.services.query_understanding import QueryUnderstanding
 from app.services.navigation_graph_service import NavigationGraphService
 from app.services.security_guard import SecurityGuard
 from app.services.identity_guard import IdentityGuard
+from app.services.retrieval_context_sanitizer import RetrievalContextSanitizer
 from app.core.logger import logger
 
 
@@ -34,6 +35,7 @@ class APMSNavigationAgent:
         )
         self.knowledge_source_id = knowledge_source_id
         self.graph = NavigationGraphService(db)
+        self.context_sanitizer = RetrievalContextSanitizer()
 
     def answer(
         self, question: str, history: list | None = None, current_screen: str | None = None
@@ -89,9 +91,14 @@ class APMSNavigationAgent:
             "Retrieved %d chunks",
             len(retrieved_chunks),
         )
+        prompt_chunks = retrieved_chunks
+        if intent != "navigate" and self.context_sanitizer.is_explanation_request(normalized_question):
+            prompt_chunks = self.context_sanitizer.sanitize(retrieved_chunks)
+            graph_path = []
+            logger.info("Sanitized explanation context | retained=%d", len(prompt_chunks))
         
         prompt = build_rag_user_prompt(
-            normalized_question, retrieved_chunks, intent, history, graph_path
+            normalized_question, prompt_chunks, intent, history, graph_path
         )
         sources, seen = [], set()
         for item in retrieved_chunks:

@@ -1263,3 +1263,128 @@ IndexError: index 510 is out of bounds for axis 0 with size 510
 2026-08-07 18:01:03 | INFO | apms | Response Cache MISS
 2026-08-07 18:01:03 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
 2026-08-07 18:01:19 | INFO | apms | Groq response received successfully
+2026-08-10 10:39:20 | INFO | apms | Intent=chat | Normalized Query=hai bro how are you | Corrections=[]
+2026-08-10 10:39:20 | INFO | apms | Response Cache MISS
+2026-08-10 10:39:20 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:39:22 | INFO | apms | Groq response received successfully
+2026-08-10 10:39:49 | INFO | apms | SecurityGuard: Restricted information request detected
+2026-08-10 10:39:59 | INFO | apms | Intent=chat | Normalized Query=ok the what can you share | Corrections=[('then', 'the')]
+2026-08-10 10:39:59 | INFO | apms | Response Cache MISS
+2026-08-10 10:39:59 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:40:00 | INFO | apms | Groq response received successfully
+2026-08-10 10:40:31 | INFO | apms | Intent=navigate | Normalized Query=open dashboard 121 | Corrections=[]
+2026-08-10 10:40:31 | INFO | apms | Retriever | Query='open dashboard 121' | Matches=5
+2026-08-10 10:40:31 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:40:31 | INFO | apms | Response Cache MISS
+2026-08-10 10:40:31 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:40:32 | INFO | apms | Groq response received successfully
+2026-08-10 10:40:32 | WARNING | apms | Navigation response was not valid JSON
+2026-08-10 10:40:48 | INFO | apms | Intent=navigate | Normalized Query=go to dashboard 230 | Corrections=[]
+2026-08-10 10:40:48 | INFO | apms | Retriever | Query='go to dashboard 230' | Matches=5
+2026-08-10 10:40:48 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:40:48 | INFO | apms | Response Cache MISS
+2026-08-10 10:40:48 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:40:50 | INFO | apms | Groq response received successfully
+2026-08-10 10:44:57 | INFO | apms | Intent=chat | Normalized Query=what is metrics | Corrections=[]
+2026-08-10 10:44:57 | INFO | apms | Response Cache MISS
+2026-08-10 10:44:57 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:44:58 | INFO | apms | Groq response received successfully
+2026-08-10 10:45:17 | INFO | apms | Intent=knowledge | Normalized Query=metrics in dashboard | Corrections=[]
+2026-08-10 10:45:17 | INFO | apms | Retriever | Query='metrics in dashboard' | Matches=5
+2026-08-10 10:45:17 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:45:17 | INFO | apms | Response Cache MISS
+2026-08-10 10:45:17 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:45:18 | INFO | apms | Groq response received successfully
+2026-08-10 10:45:32 | INFO | apms | Intent=knowledge | Normalized Query=can you explain about dashboard | Corrections=[]
+2026-08-10 10:45:32 | INFO | apms | Retriever | Query='can you explain about dashboard' | Matches=5
+2026-08-10 10:45:32 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:45:32 | INFO | apms | Response Cache MISS
+2026-08-10 10:45:32 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:45:34 | INFO | apms | Groq response received successfully
+2026-08-10 10:46:10 | INFO | apms | Intent=knowledge | Normalized Query=can you explain about authentication | Corrections=[]
+2026-08-10 10:46:10 | INFO | apms | Retriever | Query='can you explain about authentication' | Matches=5
+2026-08-10 10:46:10 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:46:10 | INFO | apms | Response Cache MISS
+2026-08-10 10:46:10 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:46:11 | INFO | apms | Groq response received successfully
+2026-08-10 10:46:40 | INFO | apms | Intent=knowledge | Normalized Query=about settings | Corrections=[]
+2026-08-10 10:46:40 | INFO | apms | Retriever | Query='about settings' | Matches=5
+2026-08-10 10:46:40 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:46:40 | INFO | apms | Response Cache MISS
+2026-08-10 10:46:40 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:46:46 | INFO | apms | Groq response received successfully
+2026-08-10 10:47:08 | INFO | apms | Intent=knowledge | Normalized Query=about users | Corrections=[('user', 'users')]
+2026-08-10 10:47:08 | INFO | apms | Retriever | Query='about users' | Matches=5
+2026-08-10 10:47:08 | INFO | apms | Retrieved 5 chunks
+2026-08-10 10:47:08 | INFO | apms | Response Cache MISS
+2026-08-10 10:47:08 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 10:47:28 | INFO | apms | Groq response received successfully
+2026-08-10 11:09:12 | INFO | apms | Intent=chat | Normalized Query=hai | Corrections=[]
+2026-08-10 11:09:12 | INFO | apms | Response Cache MISS
+2026-08-10 11:09:12 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 11:09:13 | INFO | apms | Groq response received successfully
+2026-08-10 11:09:22 | INFO | apms | Intent=knowledge | Normalized Query=explain about dashboard | Corrections=[]
+2026-08-10 11:09:22 | INFO | apms | Retriever | Query='explain about dashboard' | Matches=5
+2026-08-10 11:09:22 | INFO | apms | Retrieved 5 chunks
+2026-08-10 11:09:22 | INFO | apms | Sanitized explanation context | retained=5
+2026-08-10 11:09:22 | INFO | apms | Response Cache MISS
+2026-08-10 11:09:22 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 11:09:39 | INFO | apms | Groq response received successfully
+2026-08-10 11:10:01 | INFO | apms | Intent=navigate | Normalized Query=open dashboard | Corrections=[]
+2026-08-10 11:10:01 | INFO | apms | Retriever | Query='open dashboard' | Matches=5
+2026-08-10 11:10:01 | INFO | apms | Retrieved 5 chunks
+2026-08-10 11:10:01 | INFO | apms | Response Cache MISS
+2026-08-10 11:10:01 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 11:10:18 | INFO | apms | Groq response received successfully
+2026-08-10 11:10:18 | WARNING | apms | Navigation response was not valid JSON
+2026-08-10 11:11:12 | INFO | apms | Intent=chat | Normalized Query=tell me about narendra modi | Corrections=[]
+2026-08-10 11:11:12 | INFO | apms | Response Cache MISS
+2026-08-10 11:11:12 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 11:11:13 | INFO | apms | Groq response received successfully
+2026-08-10 11:11:24 | INFO | apms | Intent=knowledge | Normalized Query=tell me about authentication useer | Corrections=[]
+2026-08-10 11:11:24 | INFO | apms | Retriever | Query='tell me about authentication useer' | Matches=5
+2026-08-10 11:11:24 | INFO | apms | Retrieved 5 chunks
+2026-08-10 11:11:24 | INFO | apms | Sanitized explanation context | retained=5
+2026-08-10 11:11:24 | INFO | apms | Response Cache MISS
+2026-08-10 11:11:24 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 11:11:29 | INFO | apms | Groq response received successfully
+2026-08-10 12:38:41 | INFO | apms | Intent=chat | Normalized Query=hai bro | Corrections=[]
+2026-08-10 12:38:41 | INFO | apms | Response Cache MISS
+2026-08-10 12:38:41 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:38:53 | INFO | apms | Groq response received successfully
+2026-08-10 12:39:12 | INFO | apms | Intent=knowledge | Normalized Query=explain about dashboard | Corrections=[]
+2026-08-10 12:39:12 | INFO | apms | Retriever | Query='explain about dashboard' | Matches=5
+2026-08-10 12:39:12 | INFO | apms | Retrieved 5 chunks
+2026-08-10 12:39:12 | INFO | apms | Sanitized explanation context | retained=2
+2026-08-10 12:39:12 | INFO | apms | Response Cache MISS
+2026-08-10 12:39:12 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:39:13 | INFO | apms | Groq response received successfully
+2026-08-10 12:39:31 | INFO | apms | Intent=navigate | Normalized Query=open dashboard | Corrections=[]
+2026-08-10 12:39:31 | INFO | apms | Retriever | Query='open dashboard' | Matches=5
+2026-08-10 12:39:31 | INFO | apms | Retrieved 5 chunks
+2026-08-10 12:39:31 | INFO | apms | Response Cache MISS
+2026-08-10 12:39:31 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:39:53 | INFO | apms | Groq response received successfully
+2026-08-10 12:39:53 | WARNING | apms | Navigation response was not valid JSON
+2026-08-10 12:40:24 | INFO | apms | Intent=knowledge | Normalized Query=what is authentication | Corrections=[]
+2026-08-10 12:40:25 | INFO | apms | Retriever | Query='what is authentication' | Matches=5
+2026-08-10 12:40:25 | INFO | apms | Retrieved 5 chunks
+2026-08-10 12:40:25 | INFO | apms | Sanitized explanation context | retained=2
+2026-08-10 12:40:25 | INFO | apms | Response Cache MISS
+2026-08-10 12:40:25 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:40:32 | INFO | apms | Groq response received successfully
+2026-08-10 12:45:44 | INFO | apms | Intent=chat | Normalized Query=what is you name bro | Corrections=[('your', 'you')]
+2026-08-10 12:45:44 | INFO | apms | Response Cache MISS
+2026-08-10 12:45:44 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:45:45 | INFO | apms | Groq response received successfully
+2026-08-10 12:45:58 | INFO | apms | Intent=chat | Normalized Query=mm | Corrections=[]
+2026-08-10 12:45:58 | INFO | apms | Response Cache MISS
+2026-08-10 12:45:58 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:46:02 | INFO | apms | Groq response received successfully
+2026-08-10 12:46:17 | INFO | apms | Intent=navigate | Normalized Query=show me you token usage | Corrections=[('your', 'you')]
+2026-08-10 12:46:17 | INFO | apms | Retriever | Query='show me you token usage' | Matches=5
+2026-08-10 12:46:17 | INFO | apms | Retrieved 5 chunks
+2026-08-10 12:46:17 | INFO | apms | Response Cache MISS
+2026-08-10 12:46:17 | INFO | apms | Sending request to Groq | Model=openai/gpt-oss-120b
+2026-08-10 12:46:43 | INFO | apms | Groq response received successfully
+2026-08-10 12:46:43 | WARNING | apms | Navigation response was not valid JSON
