@@ -16,18 +16,41 @@ class NavigationGraphService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def find_path(self, source_id: UUID, start: str | None, destination: str) -> list[dict[str, Any]]:
-        nodes = self.db.query(NavigationNode).filter(NavigationNode.knowledge_source_id == source_id).all()
+    def find_path(
+        self, source_id: UUID, start: str | None, destination: str
+    ) -> list[dict[str, Any]]:
+        nodes = (
+            self.db.query(NavigationNode)
+            .filter(NavigationNode.knowledge_source_id == source_id)
+            .all()
+        )
         if not nodes:
             return []
+
         def matches(node: NavigationNode, value: str) -> bool:
             candidate = value.lower().strip()
-            return candidate in {str(node.screen_id).lower(), str(node.route or '').lower(), str(node.title or '').lower()}
+            return candidate in {
+                str(node.screen_id).lower(),
+                str(node.route or "").lower(),
+                str(node.title or "").lower(),
+            }
+
         target = next((node for node in nodes if matches(node, destination)), None)
         if target is None:
             terms = set(destination.lower().split())
             scored = sorted(
-                ((len(terms & set(f"{node.title or ''} {node.module or ''}".lower().split())), node) for node in nodes),
+                (
+                    (
+                        len(
+                            terms
+                            & set(
+                                f"{node.title or ''} {node.module or ''}".lower().split()
+                            )
+                        ),
+                        node,
+                    )
+                    for node in nodes
+                ),
                 key=lambda item: (-item[0], str(item[1].screen_id)),
             )
             target = scored[0][1] if scored and scored[0][0] > 0 else None
@@ -36,7 +59,11 @@ class NavigationGraphService:
         origin = next((node for node in nodes if start and matches(node, start)), None)
         if origin is None or origin.id == target.id:
             return [self._serialize(target)]
-        edges = self.db.query(NavigationEdge).filter(NavigationEdge.knowledge_source_id == source_id).all()
+        edges = (
+            self.db.query(NavigationEdge)
+            .filter(NavigationEdge.knowledge_source_id == source_id)
+            .all()
+        )
         adjacency: dict[UUID, list[UUID]] = {}
         for edge in edges:
             adjacency.setdefault(edge.from_node_id, []).append(edge.to_node_id)
@@ -60,6 +87,32 @@ class NavigationGraphService:
             current = previous[current]
         return [self._serialize(node_by_id[node_id]) for node_id in reversed(path_ids)]
 
+    def get_node(
+        self,
+        source_id: UUID,
+        screen_id: str,
+    ) -> dict[str, Any] | None:
+        """Return one source-scoped navigation node by exact screen ID."""
+
+        node = (
+            self.db.query(NavigationNode)
+            .filter(
+                NavigationNode.knowledge_source_id == source_id,
+                NavigationNode.screen_id == screen_id,
+            )
+            .first()
+        )
+
+        if node is None:
+            return None
+
+        return self._serialize(node)
+
     @staticmethod
     def _serialize(node: NavigationNode) -> dict[str, Any]:
-        return {"id": node.screen_id, "route": node.route, "title": node.title, "module": node.module}
+        return {
+            "id": node.screen_id,
+            "route": node.route,
+            "title": node.title,
+            "module": node.module,
+        }

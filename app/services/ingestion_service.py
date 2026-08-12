@@ -23,10 +23,18 @@ class IngestionService:
 
         return self.ingest_data(data, knowledge_source_id)
 
-    def ingest_data(self, data: dict, knowledge_source_id: UUID | None = None) -> int:
+    def ingest_data(
+    self,
+    data: dict,
+    knowledge_source_id: UUID | None = None,
+) -> int:
+
         screens = data.get("screens")
+
         if not isinstance(screens, list):
-            raise ValueError("JSON must contain a 'screens' array.")
+            raise ValueError(
+                "JSON must contain a 'screens' array."
+            )
 
         db_chunks = []
 
@@ -34,11 +42,19 @@ class IngestionService:
 
             chunks = self.chunker.chunk_screen(screen)
 
-            texts = [chunk["content"] for chunk in chunks]
+            texts = [
+                chunk["content"]
+                for chunk in chunks
+            ]
 
-            embeddings = self.embedder.encode_batch(texts)
+            embeddings = self.embedder.encode_batch(
+                texts
+            )
 
-            for chunk, embedding in zip(chunks, embeddings):
+            for chunk, embedding in zip(
+                chunks,
+                embeddings,
+            ):
 
                 db_chunk = ScreenChunk(
                     screen_id=chunk["screen_id"],
@@ -54,9 +70,21 @@ class IngestionService:
 
                 db_chunks.append(db_chunk)
 
+        # Adds chunks to the current transaction.
+        # Does NOT commit.
         self.repository.save_all(db_chunks)
 
+        # Ensure chunk INSERT constraints are checked before
+        # continuing with graph construction.
+        self.repository.db.flush()
+
         if knowledge_source_id is not None:
-            GraphBuilderService(self.repository.db).build(data, knowledge_source_id)
+
+            GraphBuilderService(
+                self.repository.db
+            ).build(
+                data,
+                knowledge_source_id,
+            )
 
         return len(db_chunks)

@@ -11,15 +11,32 @@ import re
 from difflib import SequenceMatcher, get_close_matches
 from typing import Iterable
 
-
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
 
 
 class QueryUnderstanding:
     _navigation_vocabulary = {
-        "open", "go", "to", "navigate", "show", "find", "create", "update",
-        "delete", "view", "search", "export", "import", "screen", "module",
-        "dashboard", "settings", "report", "reports", "permission", "permissions",
+            "open",
+            "go",
+            "to",
+            "navigate",
+            "show",
+            "find",
+            "create",
+            "update",
+            "delete",
+            "view",
+            "search",
+            "export",
+            "import",
+            "screen",
+            "module",
+            "dashboard",
+            "settings",
+            "report",
+            "reports",
+            "permission",
+            "permissions",
     }
     _chat_patterns = (
         r"^(hi|hello|hey|good (morning|afternoon|evening))\b",
@@ -46,9 +63,13 @@ class QueryUnderstanding:
                     words.update(match.group(0) for match in WORD_RE.finditer(value))
             for value in (chunk.title, chunk.module):
                 if value:
-                    domain_words.update(match.group(0) for match in WORD_RE.finditer(value))
+                    domain_words.update(
+                        match.group(0) for match in WORD_RE.finditer(value)
+                    )
         instance = cls(words)
-        instance.domain_terms = {word.lower() for word in domain_words if len(word) >= 3}
+        instance.domain_terms = {
+            word.lower() for word in domain_words if len(word) >= 3
+        }
         return instance
 
     def normalize(self, question: str) -> tuple[str, list[tuple[str, str]]]:
@@ -91,9 +112,38 @@ class QueryUnderstanding:
         words = {match.group(0).lower() for match in WORD_RE.finditer(normalized)}
         return "knowledge" if words & self.domain_terms or "apms" in words else "chat"
 
-    def retrieval_query(self, question: str, intent: str) -> str:
-        """Remove conversational filler before embedding a navigation request."""
+    def retrieval_query(
+        self,
+        question: str,
+        intent: str,
+    ) -> str:
+        """Return the meaningful navigation target."""
+
         if intent != "navigate":
             return question
-        match = self._navigate_pattern.search(question)
-        return question[match.start():].strip() if match else question
+
+        normalized = question.strip()
+
+        patterns = (
+            r"^\s*open\s+(?:the\s+)?",
+            r"^\s*go\s+to\s+(?:the\s+)?",
+            r"^\s*navigate\s+to\s+(?:the\s+)?",
+            r"^\s*take\s+me\s+to\s+(?:the\s+)?",
+            r"^\s*show\s+me\s+(?:the\s+)?",
+            r"^\s*where\s+is\s+(?:the\s+)?",
+            r"^\s*find\s+(?:the\s+)?",
+        )
+
+        for pattern in patterns:
+            cleaned = re.sub(
+                pattern,
+                "",
+                normalized,
+                count=1,
+                flags=re.IGNORECASE,
+            )
+
+            if cleaned != normalized:
+                return cleaned.strip()
+
+        return normalized

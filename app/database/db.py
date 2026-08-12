@@ -13,7 +13,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,
 )
 
 Base = declarative_base()
@@ -25,14 +25,22 @@ def init_database() -> None:
     import app.models.knowledge_source  # noqa: F401
     import app.models.navigation_edge  # noqa: F401
     import app.models.navigation_node  # noqa: F401
+    import app.models.navigation_session  # noqa: F401
     import app.models.screen_chunk  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+
     # create_all does not add new columns to an existing table. Keep this
     # lightweight migration for installations created before token tracking.
-    columns = {column["name"] for column in inspect(engine).get_columns("chat_messages")}
+    columns = {
+        column["name"] for column in inspect(engine).get_columns("chat_messages")
+    }
+
     if "token_usage" not in columns:
         with engine.begin() as connection:
             connection.execute(
-                text("ALTER TABLE chat_messages ADD COLUMN token_usage BIGINT NOT NULL DEFAULT 0")
+                text(
+                    "ALTER TABLE chat_messages "
+                    "ADD COLUMN token_usage BIGINT NOT NULL DEFAULT 0"
+                )
             )

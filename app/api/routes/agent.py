@@ -62,9 +62,15 @@ async def _voice_response(
 ) -> UnifiedVoiceResponse:
     if not generate_audio:
         return UnifiedVoiceResponse(
-            status=status, intent=intent, speech=speech, navigation=navigation,
-            audio=None, conversation_id=conversation_id, token_usage=token_usage,
-            sources=[Source(**source) for source in (sources or [])], request_id=request_id,
+            status=status,
+            intent=intent,
+            speech=speech,
+            navigation=navigation,
+            audio=None,
+            conversation_id=conversation_id,
+            token_usage=token_usage,
+            sources=[Source(**source) for source in (sources or [])],
+            request_id=request_id,
         )
     if tts_service is None:
         raise HTTPException(status_code=503, detail="Voice synthesis is not ready.")
@@ -177,10 +183,14 @@ async def chat(
         _ensure_active(request_id, cancel_event)
 
         result = await run_in_threadpool(
-            APMSNavigationAgent(db, knowledge_source_id=knowledge_source_id).answer,
+            APMSNavigationAgent(
+                db,
+                knowledge_source_id=knowledge_source_id,
+            ).answer,
             message,
             history,
             current_screen,
+            conversation_id,
         )
         _ensure_active(request_id, cancel_event)
 
@@ -198,24 +208,85 @@ async def chat(
                 result.answer
                 if isinstance(result.answer, dict)
                 else {
-                    "status": "success",
+                    "status": "not_found",
                     "intent": "navigate",
-                    "confidence": 0.0,
-                    "screen": {"id": None, "title": None, "module": None},
+                    "screen": None,
                     "navigation_path": [],
                     "summary": str(result.answer),
                     "steps": [],
-                    "sources": [source["screen_id"] for source in result.sources],
+                    "sources": [],
                 }
             )
-            screen = navigation.get("screen") or {}
-            screen_name = (
-                screen.get("title") or screen.get("id") or "the requested screen"
+
+            navigation_status = navigation.get(
+                "status",
+                "not_found",
             )
+
+            # ---------------------------------------------------------
+            # Successful navigation
+            # ---------------------------------------------------------
+            if navigation_status == "success":
+                screen = navigation.get("screen") or {}
+
+                screen_name = (
+                    screen.get("title")
+                    or screen.get("id")
+                    or "the requested screen"
+                )
+
+                speech = (
+                    navigation.get("summary")
+                    or f"Opening {screen_name}."
+                )
+
+                return await _voice_response(
+                    "success",
+                    "navigation",
+                    speech,
+                    navigation,
+                    conversation_id,
+                    result.token_usage,
+                    result.sources,
+                    request_id,
+                    cancel_event,
+                    voice_input,
+                )
+
+            # ---------------------------------------------------------
+            # Multiple matching screens
+            # ---------------------------------------------------------
+            if navigation_status == "needs_clarification":
+                speech = (
+                    navigation.get("summary")
+                    or "I need more information to determine which screen you mean."
+                )
+
+                return await _voice_response(
+                    "needs_clarification",
+                    "navigation",
+                    speech,
+                    navigation,
+                    conversation_id,
+                    result.token_usage,
+                    result.sources,
+                    request_id,
+                    cancel_event,
+                    voice_input,
+                )
+
+            # ---------------------------------------------------------
+            # Screen not found / navigation unavailable
+            # ---------------------------------------------------------
+            speech = (
+                navigation.get("summary")
+                or "I couldn't find the requested screen."
+            )
+
             return await _voice_response(
-                "success",
+                "not_found",
                 "navigation",
-                f"Opening {screen_name}.",
+                speech,
                 navigation,
                 conversation_id,
                 result.token_usage,
