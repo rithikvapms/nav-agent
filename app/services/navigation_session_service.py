@@ -32,6 +32,7 @@ class NavigationSessionService:
         intent: str,
         target: str,
         candidate_screen_ids: list[str],
+        knowledge_source_id: str | None = None,
     ) -> None:
 
         self.repository.save(
@@ -41,6 +42,7 @@ class NavigationSessionService:
                 "intent": intent,
                 "target": target,
                 "candidate_screen_ids": candidate_screen_ids,
+                "knowledge_source_id": knowledge_source_id,
             },
         )
 

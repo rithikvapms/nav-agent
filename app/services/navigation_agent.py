@@ -34,15 +34,23 @@ class APMSNavigationAgent:
     def __init__(self, db, knowledge_source_id=None):
         repository = ScreenRepository(db)
 
+        # Clients may pin a source version for reproducibility.  Otherwise
+        # navigation uses the newest graph that completed ingestion; no UUID,
+        # demo version, or screen is hard-coded in the engine.
+        self.knowledge_source_id = (
+            knowledge_source_id or repository.get_latest_ready_source_id()
+        )
+
+        self.retriever = Retriever(repository)
+
         self.llm = LLMService()
 
         self.navigation_resolver = NavigationResolver(repository)
 
         self.understanding = QueryUnderstanding.from_chunks(
-            repository.get_vocabulary_chunks(knowledge_source_id)
+            repository.get_vocabulary_chunks(self.knowledge_source_id)
         )
 
-        self.knowledge_source_id = knowledge_source_id
         self.graph = NavigationGraphService(db)
         self.navigation_sessions = NavigationSessionService(db)
         self.context_sanitizer = RetrievalContextSanitizer()
@@ -239,7 +247,7 @@ class APMSNavigationAgent:
             retrieval_query,
         )
 
-        resolution = self._navigation_resolver.resolve(
+        resolution = self.navigation_resolver.resolve(
             query=retrieval_query,
             knowledge_source_id=self.knowledge_source_id,
         )
@@ -261,12 +269,10 @@ class APMSNavigationAgent:
                 intent="navigate",
                 target=retrieval_query,
                 candidate_screen_ids=candidate_ids,
+                knowledge_source_id=str(self.knowledge_source_id),
             )
 
-            return self._generate_clarification(
-                target=retrieval_query,
-                candidates=resolution.candidates,
-            )
+            return self._build_ambiguous_answer(resolution.candidates)
 
         return AgentAnswer(
             answer={
@@ -314,14 +320,19 @@ class APMSNavigationAgent:
         )
 
         if not graph_path:
-            graph_path = [
-                {
-                    "id": candidate.screen_id,
-                    "route": candidate.route,
-                    "title": candidate.title,
-                    "module": candidate.module,
-                }
-            ]
+            return AgentAnswer(
+                answer={
+                    "status": "navigation_unavailable",
+                    "intent": "navigate",
+                    "screen": None,
+                    "navigation_path": [],
+                    "summary": "The destination exists, but no valid navigation path is available from the current screen.",
+                    "steps": [],
+                    "sources": [candidate.screen_id],
+                },
+                intent="navigate",
+                sources=[],
+            )
 
         screen = {
             "id": candidate.screen_id,
@@ -399,71 +410,9 @@ class APMSNavigationAgent:
         candidates,
     ) -> AgentAnswer:
 
-        candidate_lines = "\n".join(
-            f"{index}. {candidate.title or candidate.screen_id} "
-            f"(id: {candidate.screen_id})"
-            for index, candidate in enumerate(
-                candidates,
-                start=1,
-            )
-        )
-
-        prompt = f"""
-    You are the clarification component of a production navigation agent.
-
-    The user wants to navigate to:
-    {target}
-
-    Multiple valid navigation targets were found:
-
-    {candidate_lines}
-
-    Ask the user which target they mean.
-
-    Rules:
-    - Respond only in English.
-    - Do not choose a target.
-    - Do not invent a target.
-    - Do not invent a route.
-    - Use only the candidates provided above.
-    - Keep the response concise.
-    - Ask one clarification question.
-    """
-
-        answer, token_usage = self.llm.generate(prompt)
-
-        safe_answer = SecurityGuard.sanitize_output(answer)
-
-        return AgentAnswer(
-            answer={
-                "status": "needs_clarification",
-                "intent": "navigate",
-                "screen": None,
-                "navigation_path": [],
-                "summary": safe_answer,
-                "candidates": [
-                    {
-                        "id": candidate.screen_id,
-                        "title": candidate.title,
-                        "module": candidate.module,
-                        "route": candidate.route,
-                    }
-                    for candidate in candidates
-                ],
-                "steps": [],
-                "sources": [candidate.screen_id for candidate in candidates],
-            },
-            intent="navigate",
-            sources=[
-                {
-                    "screen_id": candidate.screen_id,
-                    "title": candidate.title,
-                    "module": candidate.module,
-                }
-                for candidate in candidates
-            ],
-            token_usage=token_usage,
-        )
+        # Kept as a compatibility shim for callers outside this service. A
+        # clarification is deterministic application data, never an LLM task.
+        return self._build_ambiguous_answer(candidates)
 
     def _resolve_pending_navigation(
         self,
@@ -477,6 +426,16 @@ class APMSNavigationAgent:
             "candidate_screen_ids",
             [],
         )
+
+        pending_source = pending_state.get("knowledge_source_id")
+        if pending_source and pending_source != str(self.knowledge_source_id):
+            self.navigation_sessions.clear(conversation_id)
+            return AgentAnswer(
+                answer={"status": "not_found", "intent": "navigate", "screen": None,
+                        "navigation_path": [], "summary": "The pending navigation request belongs to a different knowledge source.",
+                        "steps": [], "sources": []},
+                intent="navigate", sources=[]
+            )
 
         if not candidate_screen_ids:
             self.navigation_sessions.clear(conversation_id)

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import or_
 from app.models.navigation_node import NavigationNode
+from app.models.knowledge_source import KnowledgeSource
 from sqlalchemy.orm import Session
 from app.models.screen_chunk import ScreenChunk
 from sqlalchemy import select
@@ -106,6 +107,16 @@ class ScreenRepository:
         if knowledge_source_id:
             query = query.filter(ScreenChunk.knowledge_source_id == knowledge_source_id)
         return query.all()
+
+    def get_latest_ready_source_id(self) -> UUID | None:
+        """Return the current ready graph when a caller did not pin a version."""
+        source = (
+            self.db.query(KnowledgeSource.id)
+            .filter(KnowledgeSource.status == "READY")
+            .order_by(KnowledgeSource.created_at.desc())
+            .first()
+        )
+        return source[0] if source else None
 
     def search_similar(
         self, query_embedding, top_k: int = 5, knowledge_source_id: UUID | None = None

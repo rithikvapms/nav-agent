@@ -2,6 +2,19 @@
 
 FastAPI service for secure APMS navigation, normal chat, PostgreSQL conversation memory, and pgvector retrieval.
 
+## Navigation guarantees
+
+Navigation is database-backed and source-scoped. A request either resolves to a
+single graph node, returns the matching candidates for clarification, or returns
+`not_found`; it never guesses a screen, route, or edge. If `current_screen` is
+supplied and the selected destination is disconnected, the response is
+`navigation_unavailable` rather than a false success. Clarification selections
+remain scoped to the knowledge source that created them.
+
+Pass `knowledge_source_id` to pin a request to a particular ready upload. When
+it is omitted, the service selects the most recently created source in `READY`
+state, so deployed data can be updated through ingestion without hard-coded IDs.
+
 ## Run locally
 
 ```powershell

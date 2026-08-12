@@ -262,6 +262,24 @@ async def chat(
                     or "I need more information to determine which screen you mean."
                 )
 
+            if navigation_status == "navigation_unavailable":
+                speech = (
+                    navigation.get("summary")
+                    or "The destination exists, but it is not reachable from the current screen."
+                )
+                return await _voice_response(
+                    "navigation_unavailable",
+                    "navigation",
+                    speech,
+                    navigation,
+                    conversation_id,
+                    result.token_usage,
+                    result.sources,
+                    request_id,
+                    cancel_event,
+                    voice_input,
+                )
+
                 return await _voice_response(
                     "needs_clarification",
                     "navigation",

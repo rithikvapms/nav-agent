@@ -43,7 +43,7 @@ class QueryUnderstanding:
         r"^(who are you|what can you do|tell me a joke)\b",
     )
     _navigate_pattern = re.compile(
-        r"\b(open|go to|navigate|take me|show me|where is|find)\b",
+        r"\b(open|go to|navigate(?:\s+to)?|take me(?:\s+to)?|show me|bring me to|move to|visit|access|where is|find)\b",
         re.IGNORECASE,
     )
 
@@ -128,8 +128,13 @@ class QueryUnderstanding:
             r"^\s*open\s+(?:the\s+)?",
             r"^\s*go\s+to\s+(?:the\s+)?",
             r"^\s*navigate\s+to\s+(?:the\s+)?",
+            r"^\s*navigate\s+(?:the\s+)?",
             r"^\s*take\s+me\s+to\s+(?:the\s+)?",
             r"^\s*show\s+me\s+(?:the\s+)?",
+            r"^\s*bring\s+me\s+to\s+(?:the\s+)?",
+            r"^\s*move\s+to\s+(?:the\s+)?",
+            r"^\s*visit\s+(?:the\s+)?",
+            r"^\s*access\s+(?:the\s+)?",
             r"^\s*where\s+is\s+(?:the\s+)?",
             r"^\s*find\s+(?:the\s+)?",
         )

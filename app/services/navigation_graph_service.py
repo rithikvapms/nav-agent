@@ -19,6 +19,9 @@ class NavigationGraphService:
     def find_path(
         self, source_id: UUID, start: str | None, destination: str
     ) -> list[dict[str, Any]]:
+        # Browser form fields commonly submit an empty string when the client
+        # has no current-screen signal; treat that as absent context.
+        start = start.strip() or None if start else None
         nodes = (
             self.db.query(NavigationNode)
             .filter(NavigationNode.knowledge_source_id == source_id)
@@ -35,29 +38,17 @@ class NavigationGraphService:
                 str(node.title or "").lower(),
             }
 
+        # The resolver has already selected the destination.  Graph traversal
+        # must use that exact node and must never make a second, fuzzy choice.
         target = next((node for node in nodes if matches(node, destination)), None)
         if target is None:
-            terms = set(destination.lower().split())
-            scored = sorted(
-                (
-                    (
-                        len(
-                            terms
-                            & set(
-                                f"{node.title or ''} {node.module or ''}".lower().split()
-                            )
-                        ),
-                        node,
-                    )
-                    for node in nodes
-                ),
-                key=lambda item: (-item[0], str(item[1].screen_id)),
-            )
-            target = scored[0][1] if scored and scored[0][0] > 0 else None
-            if target is None:
-                return []
+            return []
         origin = next((node for node in nodes if start and matches(node, start)), None)
-        if origin is None or origin.id == target.id:
+        if origin is None:
+            # A missing current-screen signal is not a graph failure.  The UI
+            # can navigate directly to this verified destination.
+            return [self._serialize(target)] if start is None else []
+        if origin.id == target.id:
             return [self._serialize(target)]
         edges = (
             self.db.query(NavigationEdge)
@@ -78,7 +69,7 @@ class NavigationGraphService:
                     previous[neighbour] = current
                     queue.append(neighbour)
         if target.id not in previous:
-            return [self._serialize(target)]
+            return []
         node_by_id = {node.id: node for node in nodes}
         path_ids: list[UUID] = []
         current: UUID | None = target.id
